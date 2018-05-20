@@ -1,9 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun May 13 13:54:59 2018
-
-@author: humbe
-"""
+#Author: Humberto Hernandez
+#Last Updated: 5/19/2018 7:33pm
 from tower_class import tower
 import random
 
