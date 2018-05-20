@@ -9,9 +9,11 @@ The code that runs pretty much everything is the tower_coverage.py file. Those i
 
 Note: If using something other than Spyder or the Jupyter Notebook. You may or may not have to add a "plt.show()" line to display the plot if you have the plotting enabled.
 
-I've had issues before where sometimes the assert statements will trigger falsely in Spyder. I recommend re-running the files in the following order. tower_class.py file first and then running the tower_coverage.py file.
+I've had issues before where sometimes the assert statements will trigger falsely in Spyder. I recommend re-running the files in the following order.
 
 plotting_code_proj.py --> tower_class.py -- > tower_coverage.py --> test_tower_class.py
+
+
 If it's still an issue, you can just comment out the assert statements and the code will still work.
 
 For running the test_tower_class.py, I recommend running that as the main file if you want to run the tests.
