@@ -1,626 +1,413 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon May 14 14:28:20 2018
-
-@author: humbe
-"""
 #Author: Humberto Hernandez
-#Last Updated: 5/19/2018 11:02pm
-import itertools as it
+#Last updated:  5/19/2018 7:30pm
+import numpy as np
+from tower_class import tower
 
-class tower(object):
+from plotting_code_proj import plot_towers
+from plotting_code_proj import color
+
+def coverage_up_to_n(n,width,height,plot = True, interval = 3):
     '''
-    Produces a tower object.
+    Takes in an amount of towers and a desired coverage area described by a
+    height and width and returns a list of randomly generated towers
+    to populate the desired coverage area.
     
-    Attributes:
-        - self.coord_xx = (x,y), where xx is the subscript corresponding to a corner
-            of the tower's coverage area.
-            - ll means lower left corner.
-            - lr means lower right corner.
-            - tl means top left corner.
-            - tr means top right corner.
-        - self.width = Width of coverage area.
-        - self.height = Height of the coverage area.
-        - self.area = Area of coverage area.
-
-    Attribute Type:
-        - self.coord_xx is a tuple of size two with integer arguments corresponding
-            to the (x,y) location of that corner.
-                e.g. self.coord_ll = (0,0)
-        - self.width is type int.
-        - self.height is type int.
-        - self.area is type int.
+    Parameter: n
+    Type: int
+    
+    Parameter: width
+    Type: int
+    
+    Parameter: height
+    Type: int    
+    
+    Parameter: plot
+    Type: bool
+    
+    Parameter: interval
+    Type: int  
+    
+    Return:
+        - list of towers that populate the coverage area.
+        - list of towers that populate the coverage area in a format compatible
+            with the function plot_towers().
+        - Returns a tuple containing the desired coverage versus the resulting
+            coverage given n towers. (desired_area,actual_area)
+    e.g.
+    >>> valid_towers, plot_list = coverage(10,100,100)
+    >>> valid_towers
+    [tower((30, 0),15,59),
+     tower((7, 1),23,21),
+     tower((45, 34),33,44),
+     tower((49, 22),2,12),
+     tower((15, 32),15,64),
+     tower((19, 26),11,6),
+     tower((2, 27),13,13),
+     tower((53, 78),24,16),
+     tower((30, 79),23,12),
+     tower((15, 22),2,10)]
+    >>> plot_list       
+    [[tower((30, 0),15,59), '#56C8D0', None, True],
+    [tower((7, 1),23,21), '#1968E5', None, True],
+    [tower((45, 34),33,44), '#D23EEB', None, True],
+    [tower((49, 22),2,12), '#DFA7A8', None, True],
+    [tower((15, 32),15,64), '#A4011A', None, True],
+    [tower((19, 26),11,6), '#D47484', None, True],
+    [tower((2, 27),13,13), '#58D79F', None, True],
+    [tower((53, 78),24,16), '#0E7345', None, True],
+    [tower((30, 79),23,12), '#B8131C', None, True],
+    [tower((15, 22),2,10), '#239036', None, True]]
+    
+    
+    Assertions:
+        - Number of towers (n) must be a positive number.
+        - n must be an integer.
+        - width must be a positive number
+        - width must be an integer.
+        - height must be a positive number
+        - height must be an integer.   
+        - plot must be a boolean, True or False
+        - interval must be a positive number
+        - interval must be an integer.          
         
-    Methods:
-        - coord_lr(),coord_tl(),coord_tr() give corresponding (x,y) coordingates
-            for specified corner. These are methods that have property decorators
-            so they can be referenced by the user as attributes.
-        - __eq__: Checks whether two towers are equivalent to each other.
-        - __repr__:  Returns the string representation of tower object.
-        - contained(): Checks which corners of a tower are contained in another
-                        tower's coverage area.
-        - corner(): Checks which corners of a tower are contained in another
-            tower's coverage area.
-        - overlap(): Returns sub-tower with largest overlap with other.
-        - truncate(): Takes in a tower and a list of towers and truncates the
-                        tower versus that list. 
-        - borders(): Checks which walls of a tower overlap another tower's
-                        coverage area.
-        - subtowers(): Returns a list of a possible sub-towers for a given tower.
-        
+    Takes an amount of towers and desired coverage region and randomly generates
+    those towers to populate that region. You can opt to watch the attempts take
+    place in real time by changing the plot value to True. It will then plot the values
+    as time goes on. The variable interval designates the amount of time between plots.
+    It starts by generating a random tower with random (x,y) coordinate of the lower
+    left corner, a random height and random width. Once the tower is generated
+    we check if it's a valid candidate for processing by making sure it is bound
+    by the desired coverage region defined by the user. We do this by creating a
+    tower that has the dimensions of the whole region. We can then run the contained
+    method to see if the randomly generated tower is bound within the desired coverage
+    area.
+    
+    If the current list of valid towers is empty, we add the randomly generated
+    into the list.
+    
+    If it isn't, we makes sure that it isn't completely contained inside any of
+    the already established towers, or that our new tower doesn't consume the 
+    entirety of the established towers.
+    
+    Once we have gone through those steps than the tower is valid and we can proceed.
+    
+    To speed up processing, we only truncate the new tower against towers that it
+    overlaps with, which we check with the contained and borders method. If it doesn't
+    overlap with any, then we can just add it to the valid tower list.
+    
+    If there is no valid truncated version of the tower than we toss it out and try
+    again. If there is one, we can add it to the valid tower list.
+    
+    It does this over and over until the confirmed amount of towers is equal to
+    the amount of towers asked by the user.
+    
+    Once we have found all the towers we are finished.
+    
+    In the plotting mode, it will show the attempted new tower as a slash-box.
+    Then it will get replaced with a colored truncated version.
+    
+    Assertions:
+        - n must be a positive integer greater than zero.
+        - width must be a positive integer greater than zero.
+        - height must be a positive integer greater than zero.
+        - plot must be a boolean, True or False
+        - interval must be a positive integer greater than zero.
     '''
+    assert n > 0, 'Warning! Number of towers must be greater than zero!'
+    assert isinstance(n,int), 'Warning! Number of towers must be an integer!'
+    assert width > 0, 'Warning! Width of coverage area must be greater than 0!'
+    assert isinstance(width,int), 'Warning! Width must be an integer!'
+    assert height > 0, 'Warning! Height of coverage area must be greater than 0!'
+    assert isinstance(height,int),'Warning! Height must be an integer!'
+    assert isinstance(plot,bool), 'Warning! plot must be True or False!'
+    assert interval > 0, 'Warning! Interval must be greater than zero!'
+    assert isinstance(interval,int), 'Warning! Interval must be an integer!'
     
-    def __init__(self,coord,width,height):
-        '''
-        Creates self.width, self.height, and coord_ll upon instance creation of
-        tower.
-        
-        Parameter: self
-        Type: Instance of tower class.
-        
-        Parameter: coord
-        Type: tuple of length 2, items in tuple must be integer.
-        
-        Parameter: width
-        Type: int
-        
-        Parameter: height
-        Type: int 
-        
-        Returns:
-            - self.width = width
-            - self.height = height
-            - self.coord_ll = coord
-            
-        Assertions:
-            - (x,y) coordinate must be a tuple.
-            - Length of tuple must be 2.
-            - width, height, x, and y must be greater than zero.
-            - x and y coordinates must be integers.
-            - width and height must be integers.
-        
-        '''
-        assert isinstance(coord,tuple), 'Warning! (x,y) must be a tuple.'
-        assert len(coord) == 2, 'Warning! Only a tuple of length two!'
-        assert width > 0, 'Warning! tower width must be greater than zero!'
-        assert height > 0, 'Warning! tower height must be greater than zero!'
-        assert (coord[0] >= 0) and (coord[1] >= 0), 'Warning! Coordinates must be positive.'
-        assert isinstance(coord[0],int) and isinstance(coord[1],int),'Coordinates must be integers.'
-        assert isinstance(width,int), 'Warning! Must be int!'
-        assert isinstance(height, int), 'Warning! Must be int!'
-
-        self.width = width
-        self.height = height
-        self.coord_ll = coord                           #Lower left corner
- 
-    #In the event that something gets updated, these will always
-    #update with the most recent values.    
-    @property
-    def coord_lr(self): #Lower Right Corner
-        '''
-        Returns lower right corner of tower's coverage area as an (x,y) tuple
-        
-        Parameter: The instance of the tower being used to call this method is
-                    referred to as self.
-        Type: Instance of class tower.
-        
-        Return: (x,y) tuple for the lower right corner of tower's coverage area.
-        
-        e.g. 
-        >>> t = tower((1, 2),6,4)
-        >>> t.coord_lr
-        (7,2)
-                    
-        Returns the lower right corner of a tower's coverage area by taking
-        the width and adding it to the x-value of the of the tower object's
-        lower left corner (self.coord_ll[0]) attribute's x-coordinate.
-        
-        Assertions:
-            - Can only be used on an instance of tower class.
-        '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        return (self.coord_ll[0] + self.width, self.coord_ll[1])
-        
-    @property #Top Left Corner
-    def coord_tl(self):
-        '''
-        Returns top left corner of tower's coverage area as an (x,y) tuple
-        
-        Parameter: The instance of the tower being used to call this method is
-                    referred to as self.
-                    
-        Type: Instance of class tower.
-        
-        Return: (x,y) tuple for the top left corner of tower's coverage area.
-        
-        e.g. 
-        >>> t = tower((1, 2),6,4)
-        >>>> t.coord_lr
-        (1,6)
-                    
-        Returns the top left corner of a tower's coverage area by taking
-        the height and adding it to the y-value of the of the tower object's
-        lower left corner (self.coord_ll[1]) attribute's y-coordinate.
-        
-        Assertions:
-            - Can only be used on an instance of tower class.
-        '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        return (self.coord_ll[0], self.coord_ll[1] + self.height)
+    print 'Computing...'
+    confirmed_towers = 0
+    coverage_area = tower((0,0),width,height) #Taking advantage of my tower class method.
     
-    @property
-    def coord_tr(self): #Top Right Corner
-        '''
-        Returns top right corner of tower's coverage area as an (x,y) tuple
-        
-        Parameter: The instance of the tower being used to call this method is
-                    referred to as self.
-                    
-        Type: Instance of class tower.
-        
-        Return: (x,y) tuple for the top right corner of tower's coverage area.
-        
-        e.g. 
-        >>> t = tower((1, 2),6,4)
-        >>> t.coord_lr
-        (7,6)
-                    
-        Returns the top right corner of a tower's coverage area by taking
-        the height and adding it to the y-value of the of the tower object's
-        lower left corner (self.coord_ll[1]) attribute's y-coordinate as well as
-        taking the width and adding it to the tower object's lower left corner
-        (self.coord_ll[0]) attribute's x-coordinate.
-        
-        Assertions:
-            - Can only be used on an instance of tower class.
-        '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        return (self.coord_ll[0] + self.width, self.coord_ll[1] + self.height)
-
-    @property
-    def area(self): #Coverage area of tower
-        '''
-        Returns the area of the tower's coverage area.
-        
-        Parameter: The instance of the tower being used to call this method is
-                    referred to as self.
-                    
-        Type: Instance of class tower.
-        
-        Return: Returns an integer value for the area.
-        
-        e.g. 
-        >>> t = tower((1, 2),6,4)
-        >>> t.area
-        24
-        
-        Returns the area for a given tower object by taking the tower's width 
-        (self.width) and a tower's height (self.height) and taking the product.
-        
-        self.area = self.width * self.height
-        
-        Assertions: 
-            - Can only be used on an instance of tower class.
-        '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        return self.width * self.height
+    valid_towers = []
+    plot_list = []
     
-    def __repr__(self):
-        '''
-        Returns tower object in string format so as to easily reproduce the tower object.
-        
-        e.g.
-        >>> t = tower((1, 2),6,4)
-        >>> print t
-        tower((1, 2),6,4)
-        
-        Assertions:
-            - Can only be used on an instance of tower class.
-        '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        return 'tower(%s,%d,%d)' % (self.coord_ll,self.width,self.height)
-            
-    def contained(self,other):
-        '''
-        Checks which corners of a tower (referred to as self) are contained in 
-        another tower's (referred to as other) coverage area.
-        
-        Parameter: self
-        Type: tower object
-        
-        Parameter: other
-        Type: tower object
-        
-        Returns: A list of True or False boolean values. Where each item in the 
-        list corresponds to a corner in the following manner.
-        
-                [LowerLeftCorner,TopLeftCorner,LowerRightCorner,TopRightCorner]
-        
-        A corner produces a True value if it is inside other's coverage area.
-        If the whole list is True, then that means the tower is contained.
-        Any Falses mean that the corresponding corner lies outside the bounds 
-        of the other's coverage area.
-        
-        e.g.
-        
-        >>> t = tower((0,0),2,2)
-        >>> z = tower((1,1),2,2)
-        >>> z.contained(t) 
-        [True, False, False, False]
-        >>> #Tells us that the lower left corner is inside t's coverage.
-        
-        It does so by checking each corner of a tower's (referred to as self)
-        coverage area. For each corner it checks it against the corners of
-        the other tower's (referred to as other) coverage area. It does so by
-        accessing the attributes (coord_ll,coord_tl,coord_lr,coord_tr) of other's
-        coverage area and checking against the x-coordinate and y-coordinate of
-        each of other's corner. If one of self's corners is bounded inside by
-        other's corners, then that corner is indeed contained and produces 
-        a value of True. Else it produces False.
-        
-        Note: The corner method INCLUDES the bounds created by other's four
-                corners
-        
-        Assertions:
-            - Method can only be used on instances of tower class.
-            
-        '''
-        assert isinstance(other,tower),'Warning! Argument is not of class tower!'
-        assert isinstance(self,tower), 'Warning! Argument is not of class tower!'
-        checker = [False,False,False,False] #Corners = [lowerleft,TopLeft,lowerRight,TopRight]
-        if (self.coord_ll[0] >= other.coord_ll[0]) and (self.coord_ll[1] >= other.coord_ll[1]):
-            checker[0] = True
-        if (self.coord_tl[0] >= other.coord_tl[0]) and (self.coord_tl[1] <= other.coord_tl[1]):
-            checker[1] = True
-        if (self.coord_lr[0] <= other.coord_lr[0]) and (self.coord_lr[1] >= other.coord_lr[1]):
-            checker[2] = True
-        if (self.coord_tr[0] <= other.coord_tr[0]) and (self.coord_tr[1] <= other.coord_tr[1]):
-            checker[3] = True
-            
-        return checker
+    desired_area = width * height
     
-    def __eq__(self,other):
-        '''
-        Checks if one tower is equivalent to another.
+    while confirmed_towers < n:
         
-        Parameter: self
-        Type: tower object
+        x_rand = np.random.randint(width, size = 1)
+        y_rand = np.random.randint(height, size = 1)
+        x = x_rand[0]
+        y = y_rand[0]
         
-        Parameter: other
-        Type: tower object
+        width_rand = np.random.randint(1,width+1, size = 1) #Have to be careful about half-open interval
+        height_rand = np.random.randint(1,height+1, size = 1)
+        tower_width = width_rand[0]
+        tower_height = height_rand[0]
+        ###
+        t = tower((x,y),tower_width,tower_height)
         
-        Returns: True or False.
-        
-        e.g.
-        >>> t = tower((0,0),2,2)
-        >>> z = tower((0,0),2,2)
-        >>> t == z
-        True
-        
-        Returns True or False if a tower is equivalent to another tower.
-        It does so by checking if the lower left coordinate's, the heights,
-        and the widths of both towers match.
-        - self.coord_ll == other.coord_ll
-        - self.width == other.width
-        - self.height == other.height
-        
-        Assertions:
-            - Method can only be used on instances of tower class.
-            
-        '''
-        assert isinstance(self,tower)
-        assert isinstance(other,tower)
-        if(self.coord_ll == other.coord_ll) and (self.width == other.width) and (self.height == other.height):
-            return True
-        else: 
-            return False
-    
-    def corner(self,other):
-        '''
-        Checks which corners of a tower are in another tower's coverage area.
-        Ignores the bounds of the other tower's coverage area.
-        
-        Parameter: self
-        Type: tower object
-        
-        Parameter: other
-        Type: tower object
-        
-        Return: A list with four boolean values, each corresponding to a corner of
-                the tower (referred to as self), that is inside the tower is is
-                being compared to (referred to as other.)
+        #Check if newly generated tower is contained in main coverage area.
+        test = t.contained(coverage_area)
+        valid = 1
+        if all(test) != True:
+            valid = 0
                 
-                [lowerleftcorner,TopLeftcorner,lowerRightcorner,TopRightcorner]
         
-        e.g.
-        
-        >>> t = tower((0,0),2,2)
-        >>> z = tower((1,1),2,2)
-        >>> z.corner(t) 
-        [True, False, False, False]
-        >>> #Tells us that the lower left corner is inside t's coverage.
-        
-        It does so by checking each corner of a tower's (referred to as self)
-        coverage area. For each corner it checks it against the corners of
-        the other tower's (referred to as other) coverage area. It does so by
-        accessing the attributes (coord_ll,coord_tl,coord_lr,coord_tr) of other's
-        coverage area and checking against the x-coordinate and y-coordinate of
-        each of other's corner. If one of self's corners is bounded inside by
-        other's corners, then that corner is indeed contained and produces 
-        a value of True. Else it produces False.
-        
-        The following variables in the code all have the same list convention.
-        
-        corners, checkers, results = [lowerleftcorner,TopLeftcorner,lowerRightcorner,TopRightcorner]
-        
-        Note: The corner method EXCLUDES the bounds created by other's four
-                corners
- 
-       Assertions:
-            - Method can only be used on instances of tower class.
-                            
-        '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        assert isinstance(other,tower), 'Warning! Argument must be of class tower!'
-        corners = [self.coord_ll,self.coord_tl,self.coord_lr,self.coord_tr]
-        results = [] #The result of a corner.
-        for corner in corners:
-            checkers = [False,False,False,False]
-            if (corner[0] > other.coord_ll[0]) and (corner[1] > other.coord_ll[1]):
-                checkers[0] = True
-            if (corner[0] > other.coord_tl[0]) and (corner[1] < other.coord_tl[1]):
-                checkers[1] = True
-            if (corner[0] < other.coord_lr[0]) and (corner[1] > other.coord_lr[1]):
-                checkers[2] = True
-            if (corner[0] < other.coord_tr[0]) and (corner[1] < other.coord_tr[1]):
-                checkers[3] = True
-
-            if all(checkers):
-                results.append(True)
-            else:
-                results.append(False)
-                
-        return results
-    
-    def subtowers(self):
-        '''
-        Returns a generator object that produces all possible subtowers for a 
-        given tower. Starts with subtowers with the largest area and goes down 
-        to the subtowers with the smallest area.
-        
-        Parameter: self
-        Type: tower object
-        
-        Return: generator object that produces a tower's sub-towers.
-        
-        e.g.
-        >>> t = tower((0,0),2,2)
-        >>> x = t.subtowers()
-        >>> x
-        <generator object subtowers at 0x000000000D9B6870>
-        >>> for i in x:
-        ...    print i
-        ...
-        tower((0, 0),2,2)
-        tower((0, 0),1,2)
-        tower((1, 0),1,2)
-        tower((0, 0),2,1)
-        tower((0, 1),2,1)
-        tower((0, 0),1,1)
-        tower((1, 0),1,1)
-        tower((0, 1),1,1)
-        tower((1, 1),1,1)
-        
-        It starts by taking the tower's width, height, and lower left corner value
-        and constructing lists of all possible widths,heights, x-coordinates,
-        and y-coordinates. Then it concatenates the widths and heights in order
-        to use the product function from the itertools module to produce all
-        possible width and height pairs into a list of tuples. It removes the 
-        duplicates in this list. We then sort the width and height pairs by
-        ordering them from the largest area to the smallest area that a pair
-        can produce by the use of the built-in sort function found in Python and
-        the use of a lambda function in it's argument. This helps avoid having
-        to compute a large list which can reach millions of subtowers long if the
-        desired coverage area is large enough.
-        
-        Assertions:
-            - Can only be used on an instance of tower class.        
-        '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        #Range of coordinate values possible within the current towers coverage area.
-        coord_x_list = range(self.width)
-        coord_y_list = range(self.height)
-        
-        #Possible x-values and y-values inside the tower's coverage area.
-        tower_xs = [i+self.coord_ll[0] for i in coord_x_list]
-        tower_ys = [i+self.coord_ll[1] for i in coord_y_list]
-        
-        #Range of possible tower widths and heights possible within tower's coverage area.
-        w = range(self.width)
-        h = range(self.height)
-        tower_ws = [i+1 for i in w]
-        tower_hs = [i+1 for i in h]
-        
-        tower_width_height = tower_hs + tower_ws
-        
-        width_height_pairs = []
-        for product in it.product(tower_width_height,repeat = 2):
-            width_height_pairs.append(product)
-            
-        unique_pairs = list(set(width_height_pairs))
-        
-        #Ordering from largest area to smallest.
-        unique_pairs.sort(key = lambda (a,b): a*b, reverse = True)
-        
-        for width,height in unique_pairs:
-            for y in tower_ys:
-                for x in tower_xs:
-                    t = tower((x,y),width,height)
-                    if all(t.contained(self)):
-                        yield t
-                    else:
-                        break
-                                     
-        
-    def overlap(self,other):
-        '''
-        Returns the overlap of one tower with another tower as a tower
-        object. If no overlap is possible, returns None.
-        
-        Parameter: self
-        Type: tower object
-        
-        Parameter: other
-        Type: tower object
-        
-        Return: tower object representing the region of overlap.
-                If no overlap is found, returns None.
-                
-        e.g.
-        >>> t = tower((0,0),2,2)
-        >>> z = tower((1,1),2,2)
-        >>> z.overlap(t)
-        tower((1, 1),1,1)
-        
-        Returns the region of overlap by looking for the largest subtower that
-        can represent the region of overlap. Due to the fact that when using 
-        the subtowers() method, it produces the subtowers with the largest area
-        first, that means that the first subtower that, when run through the
-        contained method, produces all true, then it would be equal to the region
-        of overlap. The use of the generator makes the computation quick. It can
-        find the overlap without having to generate all possible subtowers.
-
-       Assertions:
-            - Method can only be used on instances of tower class. 
-            
-       '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        assert isinstance(other,tower), 'Warning! Argument must be of class tower!'               
-
-        subtowers = self.subtowers()
-
-        for subtower in subtowers:
-            contained_check = subtower.contained(other)
-            if all(contained_check):
-                return subtower
-            
-        return None
-    
-    def borders(self,other):
-        '''
-        Returns whether the left, right, top, or bottom wall of a tower (self) overlaps
-        with another tower's (other).
-        
-        Parameter: self
-        Type: tower object
-        
-        Paramater: other
-        Type: tower object
-        
-        Return: A boolean list with values corresonding to a wall in the following 
-                format. True means that the wall is inside another tower's coverage area.
-                False means that is is not between the other tower's walls.
-                
-                [Left Wall, Right Wall, Top Wall, Bottom Wall]
-                
-        e.g.
-        >>> t = tower((0,0),2,2)
-        >>> z = tower((1,1),2,2)
-        >>> z.borders(t)
-        [True, False, False, True] #Left wall and bottom wall are inside.
-        
-        It does so by checking each wall individually. For the left and right walls,
-        it checks whether the x-coordinates of those walls can be found inside
-        the region bounded between other's left and right walls. If is found within
-        this region of x-values, it then checks whether the y-values of self's left
-        and right walls are found in the region bounded by other's y-values of
-        the left and right walls. The top and bottom walls are computed in a similar
-        fashion.
-        
-        Assertions:
-            - Method can only be used on instances of tower class. 
-            
-        '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
-        assert isinstance(other,tower), 'Warning! Argument must be of class tower!'
-        wall = [False, False, False, False] #[left wall, right wall, top wall, bottom wall]
-        #Start with left wall.
-        if (self.coord_ll[0] < other.coord_lr[0]) and (self.coord_ll[0] >= other.coord_ll[0]):
-            if (self.coord_ll[1] < other.coord_tl[1]) and (self.coord_ll[1] >= other.coord_ll[1]):
-                wall[0] = True
-            elif (self.coord_ll[1] < other.coord_ll[1]) and (self.coord_tl[1] > other.coord_ll[1]):
-                wall[0] = True
-        #Check right wall.
-        if (self.coord_lr[0] > other.coord_ll[0]) and (self.coord_lr[0] <= other.coord_lr[0]):
-            if (self.coord_lr[1] < other.coord_tr[1]) and (self.coord_lr[1] >= other.coord_lr[1]):
-                wall[1] = True
-            elif (self.coord_lr[1] < other.coord_lr[1]) and (self.coord_tr[1] > other.coord_lr[1]):
-                wall[1] = True  
-        #Checking top wall.
-        if(self.coord_tl[1] > other.coord_ll[1]) and (self.coord_tl[1] <= other.coord_tl[1]):
-            if (self.coord_tl[0] < other.coord_lr[0]) and (self.coord_ll[0] >= other.coord_ll[0]):
-                wall[2] = True
-            elif (self.coord_tl[0] < other.coord_ll[0]) and (self.coord_tr[0] > other.coord_ll[0]):
-                wall[2] = True
-        #Checking lower wall        
-        if(self.coord_ll[1] < other.coord_tl[1]) and (self.coord_ll[1] >= other.coord_ll[1]):
-            if (self.coord_ll[0] < other.coord_tr[0]) and (self.coord_ll[0] >= other.coord_ll[0]):
-                wall[3] = True
-            elif (self.coord_ll[0] < other.coord_ll[0]) and (self.coord_lr[0] > other.coord_ll[0]):
-                wall[3] = True
-        return wall
-
-    def truncate(self,other):
-        '''
-        Takes in a list of towers (other) to truncate against and returns a single tower
-        object, optimizing new tower for maximum possible area.
-        
-        Parameter: self
-        Type: tower object
-        
-        Parameter: other
-        Type: list, items in this list must be type tower object.
-        
-        Return: tower object representing truncated version of self maximized
-                for largest possible area. If no valid truncated version exists
-                against towers found in the list, returns None. If tower does not
-                overlap with any found in the list, returns itself.
-        
-        e.g.
-        >>> t = tower((0,0),2,2)
-        >>> z = tower((1,1),2,2)
-        >>> z.truncate([t])
-        tower((2, 1),1,2)
-        
-        It starts by calling the subtowers() method on self. It starts checking
-        subtowers (starting with the largest area) and checks them against all
-        towers found in the list (other). It only returns a the best truncated
-        version if it passes both the corner method and the border method with
-        values of all Falses (meaning not found inside the tower's we are
-        checking against) for all towers found in the list (other).
-        
-        Assertions:
-            - Can only be used with tower objects.
-            - List argument must be a list.
-            - Arguments inside of list must be of class tower. Validated
-                within corner and borders method.
-        '''
-        assert isinstance(other,list), 'Warning! Argument must be type list!'
-            
-        subtowers = self.subtowers()
-        
-        default = None
-        
-        for subtower in subtowers:
-            valid = 1
-            for tower in other:
-                corner_check = subtower.corner(tower)
-                border_check = subtower.borders(tower)
-                if (any(corner_check)) or (any(border_check)):
+        if len(valid_towers) != 0:
+            #Checking to see if newly generated tower is inside any of the
+            #already established towers.
+            for t_i in valid_towers:
+                checks = t.contained(t_i)
+                if all(checks) == True:
                     valid = 0
-                    break
-            if valid == 1:
-                #Only returns subtower if it's valid subtower for all towers it is checking against.
-                return subtower
+            #Checking to see if any of my established towers are inside of mu
+            #newly generated tower.
+            for t_i in valid_towers:
+                checks = t_i.contained(t)
+                if all(checks) == True:
+                    valid = 0
+                    
+        #Now that we have validated the new tower, we can proceed.
+        if valid == 1:
+            #Plotting newly generated tower.
+            if plot:
+                plot_t = [t,None,'/',False]
+                plot_list.append(plot_t)
+                plot_towers(plot_list,width,height)
+                plt.pause(interval)
+                plt.close()
+            #If the tower generated is equal to the coverage area, then we are done.
+            if (len(valid_towers) == 0) and (t == coverage_area):
+                valid_towers.append(t)
+                return list_of_towers, plot_list
+            elif len(valid_towers) == 0:
+                valid_towers.append(t)
+                if plot:
+                    plot_list.pop()
+                    color_rect = '#%02X%02X%02X' % (color(),color(),color())
+                    plot_list.append([t,color_rect,None,True])
+                confirmed_towers += 1
+            else:
+                truncate_list = []
+                for tow in valid_towers:
+                    if any(t.corner(tow)) or any(t.borders(tow)):
+                        truncate_list.append(tow)
+                        
+                if len(truncate_list) != 0:        
+                    truncated = t.truncate(truncate_list) #Was valid towers
+                    if truncated != None:   
+                        if plot:
+                            plot_list.pop()
+                            color_rect = '#%02X%02X%02X' % (color(),color(),color())
+                            plot_list.append([truncated,color_rect,None,True])
+                        confirmed_towers += 1
+                        valid_towers.append(truncated)
+                    else:
+                        if plot:
+                            plot_list.pop()
+                        
+                else:
+                    if plot:
+                        plot_list.pop()
+                        color_rect = '#%02X%02X%02X' % (color(),color(),color())
+                        plot_list.append([t,color_rect,None,True])
+                    confirmed_towers += 1
+                    valid_towers.append(t)
+                if plot: 
+                    if confirmed_towers == n:
+                        plot_towers(plot_list,width,height)    
+                        
+        actual_area = 0
+        for coverage in valid_towers:
+            actual_area = actual_area + coverage.area
         
-        return default             
+        if (actual_area == desired_area):
+            print "Coverage area has been filled!"
+            break
+        
+    print 'Desired area: ', desired_area
+    print 'Actual area: ', actual_area
+
+
+    return valid_towers, (desired_area,actual_area), plot_list 
+
+def average_towers_for_coverage(iterations,width,height):
+    '''
+    Takes in an amount of iterations and a desired coverage area described by a
+    height and width and returns the average amount of towers needed to fully
+    populate the desired coverage area.
+    
+    Parameter: iterations
+    Type: int
+    
+    Parameter: width
+    Type: int
+    
+    Parameter: height
+    Type: int    
+    
+    Return:
+        - Returns the average for the number of iterations asked for by the user.
+    e.g.
+    
+    Assertions:
+        - iterations must be a positive number.
+        - iterations must be an integer.
+        - width must be a positive number
+        - width must be an integer.
+        - height must be a positive number
+        - height must be an integer.            
+        
+    Takes an amount of iterations and desired coverage region and randomly generates
+    those towers to populate that region. 
+
+    It starts by generating a random tower with random (x,y) coordinate of the lower
+    left corner, a random height and random width. Once the tower is generated
+    we check if it's a valid candidate for processing by making sure it is bound
+    by the desired coverage region defined by the user. We do this by creating a
+    tower that has the dimensions of the whole region. We can then run the contained
+    method to see if the randomly generated tower is bound within the desired coverage
+    area.
+    
+    If the current list of valid towers is empty, we add the randomly generated
+    into the list.
+    
+    If it isn't, we makes sure that it isn't completely contained inside any of
+    the already established towers, or that our new tower doesn't consume the 
+    entirety of the established towers.
+    
+    Once we have gone through those steps than the tower is valid and we can proceed.
+    
+    To speed up processing, we only truncate the new tower against towers that it
+    overlaps with, which we check with the contained and borders method. If it doesn't
+    overlap with any, then we can just add it to the valid tower list.
+    
+    If there is no valid truncated version of the tower than we toss it out and try
+    again. If there is one, we can add it to the valid tower list.
+    
+    It does this over and over until the confirmed amount of towers is equal to
+    the amount of towers asked by the user.
+    
+    Once we have found all the towers we are finished and we go to the next iteration.
+    It does this until all the iterations are done.
+    
+    
+    
+    Assertions:
+        - iterations must be a positive integer greater than zero.
+        - width must be a positive integer greater than zero.
+        - height must be a positive integer greater than zero.
+
+    '''
+    assert iterations > 0, 'Warning! Number of iterations must be greater than zero!'
+    assert isinstance(iterations,int), 'Warning! Number of iterations must be an integer!'
+    assert width > 0, 'Warning! Width of coverage area must be greater than 0!'
+    assert isinstance(width,int), 'Warning! Width must be an integer!'
+    assert height > 0, 'Warning! Height of coverage area must be greater than 0!'
+    assert isinstance(height,int),'Warning! Height must be an integer!'
+    
+    print 'Computing...'
+    confirmed_towers = 0
+    coverage_area = tower((0,0),width,height) #Taking advantage of my tower class method.
+    
+    desired_area = width * height
+    counter = 0
+    number_of_towers = []
+    
+    while counter < iterations:
+        actual_area = 0
+        valid_towers = []
+        while actual_area != desired_area:
+            x_rand = np.random.randint(width, size = 1)
+            y_rand = np.random.randint(height, size = 1)
+            x = x_rand[0]
+            y = y_rand[0]
+            
+            width_rand = np.random.randint(1,width+1, size = 1) #Have to be careful about half-open interval
+            height_rand = np.random.randint(1,height+1, size = 1)
+            tower_width = width_rand[0]
+            tower_height = height_rand[0]
+            ###
+            t = tower((x,y),tower_width,tower_height)
+            
+            #Check if newly generated tower is contained in main coverage area.
+            test = t.contained(coverage_area)
+            valid = 1
+            if all(test) != True:
+                valid = 0
+                    
+            
+            if len(valid_towers) != 0:
+                #Checking to see if newly generated tower is inside any of the
+                #already established towers.
+                for t_i in valid_towers:
+                    checks = t.contained(t_i)
+                    if all(checks) == True:
+                        valid = 0
+                #Checking to see if any of my established towers are inside of mu
+                #newly generated tower.
+                for t_i in valid_towers:
+                    checks = t_i.contained(t)
+                    if all(checks) == True:
+                        valid = 0
+                        
+            #Now that we have validated the new tower, we can proceed.
+            if valid == 1:
+                #If the tower generated is equal to the coverage area, then we are done.
+                if (len(valid_towers) == 0) and (t == coverage_area):
+                    valid_towers.append(t)
+                    return list_of_towers, plot_list
+                elif len(valid_towers) == 0:
+                    valid_towers.append(t)
+                    confirmed_towers += 1
+                else:
+                    truncate_list = []
+                    for tow in valid_towers:
+                        if any(t.corner(tow)) or any(t.borders(tow)):
+                            truncate_list.append(tow)
+                            
+                    if len(truncate_list) != 0:        
+                        truncated = t.truncate(truncate_list) #Was valid towers
+                        if truncated != None:   
+                            confirmed_towers += 1
+                            valid_towers.append(truncated)                        
+                    else:
+                        confirmed_towers += 1
+                        valid_towers.append(t)  
+                            
+            actual_area = 0
+            for coverage in valid_towers:
+                actual_area = actual_area + coverage.area
+            
+            if (actual_area == desired_area):
+                print 'Iteration: %d. Desired coverage area has been filled!' % (counter+1)
+                break
+            
+        number_of_towers.append(len(valid_towers))
+        counter += 1
+    
+    summation = float(sum(number_of_towers))
+    average = summation / len(number_of_towers)
+    
+    print "Number of iterations: ", iterations
+    print "Average: ", average    
+    
+    return average
+       
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
