@@ -7,7 +7,7 @@ If using the Spyder IDE, I recommend attempting to run the plotting functions so
 
 The code that runs pretty much everything is the tower_coverage.py file. Those include the functions for plotting up to n towers and the function that tells you the average amount of towers needed to cover the desired coverage area.
 
-Note: If using something other than Spyder of the Jupyter Notebook. You may or may not have to add a "plt.show()" line to display the plot if you have the plotting enabled.
+Note: If using something other than Spyder or the Jupyter Notebook. You may or may not have to add a "plt.show()" line to display the plot if you have the plotting enabled.
 
 I've had issues before where sometimes the assert statements will trigger falsely in Spyder. I recommend re-running the files in the following order. tower_class.py file first and then running the tower_coverage.py file.
 
