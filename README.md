@@ -3,7 +3,7 @@ This repository contains the code for the Individual Project by Humberto Hernand
 
 Please keep everything in the same directory.
 
-If using the Spyder IDE, I recommend attemping to run the plotting functions so that it plots in a separate window. Usually what I'll do is I'll run the file, cancel it the run, write "%matplotlib auto" in the console and try again.
+If using the Spyder IDE, I recommend attempting to run the plotting functions so that it plots in a separate window. Usually what I'll do is I'll run the file, cancel it the run, write "%matplotlib auto" in the console and try again.
 
 The code that runs pretty much everything is the tower_coverage.py file. Those include the functions for plotting up to n towers and the function that tells you the average amount of towers needed to cover the desired coverage area.
 
