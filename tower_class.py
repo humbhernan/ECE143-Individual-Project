@@ -596,12 +596,10 @@ class tower(object):
         Assertions:
             - Can only be used with tower objects.
             - List argument must be a list.
-            - Arguments inside of list must be of class tower.
+            - Arguments inside of list must be of class tower. Validated
+                within corner and borders method.
         '''
-        assert isinstance (self,tower), 'Warning! Requires an instance of tower class!'
         assert isinstance(other,list), 'Warning! Argument must be type list!'
-        for t in other:
-            assert isinstance(t,tower), 'Warning! Items in the list must be of class tower!' 
             
         subtowers = self.subtowers()
         
