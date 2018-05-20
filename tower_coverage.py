@@ -1,11 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon May 14 15:56:14 2018
-
-@author: humbe
-"""
 #Author: Humberto Hernandez
-#Last updated:  5/14/2018
+#Last updated:  5/19/2018 7:30pm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
@@ -17,14 +11,116 @@ import random
 
 color_rect = '#%02X%02X%02X' % (color(),color(),color())
 
-def coverage(n,width,height,plot = True):
+def coverage_up_to_n(n,width,height,plot = False, interval = 3):
     '''
+    Takes in an amount of towers and a desired coverage area described by a
+    height and width and returns a list of randomly generated towers
+    to populate the desired coverage area.
     
+    Parameter: n
+    Type: int
+    
+    Parameter: Width
+    Type: int
+    
+    Parameter: Height
+    Type: int    
+    
+    Parameter: plot
+    Type: bool
+    
+    Parameter: Height
+    Type: int  
+    
+    Return:
+        - list of towers that populate the coverage area.
+        - list of towers that populate the coverage area in a format compatible
+            with the function plot_towers().
+    
+    e.g.
+    >>> valid_towers, plot_list = coverage(10,100,100)
+    >>> valid_towers
+    [tower((30, 0),15,59),
+     tower((7, 1),23,21),
+     tower((45, 34),33,44),
+     tower((49, 22),2,12),
+     tower((15, 32),15,64),
+     tower((19, 26),11,6),
+     tower((2, 27),13,13),
+     tower((53, 78),24,16),
+     tower((30, 79),23,12),
+     tower((15, 22),2,10)]
+    >>> plot_list       
+    [[tower((30, 0),15,59), '#56C8D0', None, True],
+    [tower((7, 1),23,21), '#1968E5', None, True],
+    [tower((45, 34),33,44), '#D23EEB', None, True],
+    [tower((49, 22),2,12), '#DFA7A8', None, True],
+    [tower((15, 32),15,64), '#A4011A', None, True],
+    [tower((19, 26),11,6), '#D47484', None, True],
+    [tower((2, 27),13,13), '#58D79F', None, True],
+    [tower((53, 78),24,16), '#0E7345', None, True],
+    [tower((30, 79),23,12), '#B8131C', None, True],
+    [tower((15, 22),2,10), '#239036', None, True]]
+    
+    
+    Assertions:
+        - Number of towers (n) must be a positive number.
+        - n must be an integer.
+        - width must be a positive number
+        - width must be an integer.
+        - height must be a positive number
+        - height must be an integer.   
+        - plot must be a boolean, True or False
+        - interval must be a positive number
+        - interval must be an integer.          
+        
+    Takes an amount of towers and desired coverager region and randomly generates
+    those towers to populate that region. You can opt to watch the attempts take
+    place in real time by changing the plot value to True. It will then plot the values
+    as time goes on. The variable interval designates the amount of time between plots.
+    It starts by generating a random tower with random (x,y) coordinate of the lower
+    left corner, a random height and random width. Once the tower is generated
+    we check if it's a valid candidate for processing by making sure it is bound
+    by the desired coverage region defined by the user. We do this by creating a
+    tower that has the dimensions of the whole region. We can then run the contained
+    method to see if the randomly generated tower is bound within the desired coverage
+    area.
+    
+    If the current list of valid towers is empty, we add the randomly generated
+    into the list.
+    
+    If it isn't, we makes sure that it isn't completely contained inside any of
+    the already established towers, or that our new tower doesn't consume the 
+    entirety of the established towers.
+    
+    Once we have gone through those steps than the tower is valid and we can proceed.
+    
+    To speed up processing, we only truncate the new tower against towers that it
+    overlaps with, which we check with the contained and borders method. If it doesn't
+    overlap with any, then we can just add it to the valid tower list.
+    
+    If there is no valid truncated version of the tower than we toss it out and try
+    again. If there is one, we can add it to the valid tower list.
+    
+    It does this over and over until the confirmed amount of towers is equal to
+    the amount of towers asked by the user.
+    
+    Assertions:
+        - n must be a positive integer greater than zero.
+        - width must be a positive integer greater than zero.
+        - height must be a positive integer greater than zero.
+        - plot must be a boolean, True or False
+        - interval must be a positive integer greater than zero.
     '''
     assert n > 0, 'Warning! Number of towers must be greater than zero!'
+    assert isinstance(n,int), 'Warning! Number of towers must be an integer!'
     assert width > 0, 'Warning! Width of coverage area must be greater than 0!'
+    assert isinstance(width,int), 'Warning! Width must be an integer!'
     assert height > 0, 'Warning! Height of coverage area must be greater than 0!'
-#    assert isinstance(plot,bool), 'Warning! plot must be True or False!'
+    assert isinstance(height,int),'Warning! Height must be an integer!'
+    assert isinstance(plot,bool), 'Warning! plot must be True or False!'
+    assert interval > 0, 'Warning! Interval must be greater than zero!'
+    assert isinstance(interval,int), 'Warning! Interval must be an integer!'
     
     confirmed_towers = 0
     coverage_area = tower((0,0),width,height) #Taking advantage of my tower class method.
@@ -52,49 +148,39 @@ def coverage(n,width,height,plot = True):
         #Check if newly generated tower is contained in main coverage area.
         test = t.contained(coverage_area)
         valid = 1
-        for check in test:
-            if check == False:
-                valid = 0
+        if all(test) != True:
+            valid = 0
                 
-        failed = 0        
-        for t_i in valid_towers:
-            checks = t.contained(t_i)
-            for check in checks:
-                if check == True:
-                    failed += 1
-            if failed == 4:
-                print 'Failed!'
-                valid = 0
-            failed = 0
-                
-        failed = 0        
-        for t_i in valid_towers:
-            checks = t_i.contained(t)
-            for check in checks:
-                if check == True:
-                    failed += 1
-            if failed == 4:
-                print 'Failed!'
-                valid = 0
-            failed = 0
-                
-                
+        
+        if len(valid_towers) != 0:
+            #Checking to see if newly generated tower is inside any of the
+            #already established towers.
+            for t_i in valid_towers:
+                checks = t.contained(t_i)
+                if all(checks) == True:
+                    valid = 0
+            #Checking to see if any of my established towers are inside of mu
+            #newly generated tower.
+            for t_i in valid_towers:
+                checks = t_i.contained(t)
+                if all(checks) == True:
+                    valid = 0
                     
-        #If it's in the coverage area, proceed.
+        #Now that we have validated the new tower, we can proceed.
         if valid == 1:
             #Plotting newly generated tower.
+            print 'Coming in: ',t
             if plot:
                 plot_t = [t,None,'/',False]
                 plot_list.append(plot_t)
                 plot_towers(plot_list,width,height)
-                plt.pause(3)
+                plt.pause(interval)
                 plt.close()
-            print 'Coming in: ',t
             #If the tower generated is equal to the coverage area, then we are done.
             if (len(valid_towers) == 0) and (t == coverage_area):
                 valid_towers.append(t)
                 print 'Valid_towers: ', valid_towers
-                return list_of_towers
+                return list_of_towers, plot_list
             elif len(valid_towers) == 0:
                 valid_towers.append(t)
                 if plot:
@@ -104,45 +190,44 @@ def coverage(n,width,height,plot = True):
                 confirmed_towers += 1
             else:
                 truncate_list = []
-                print truncate_list
                 for tow in valid_towers:
                     if any(t.corner(tow)) or any(t.borders(tow)):
                         truncate_list.append(tow)
-                        print truncate_list
+
+                print truncate_list
                         
-                #if len(truncate_list) != 0        
-                truncated = t.truncate(valid_towers) #Was valid towers
-                if truncated != None:   
-                    print 'Going out: ', truncated
-                    if plot:
-                        plot_list.pop()
-                        color_rect = '#%02X%02X%02X' % (color(),color(),color())
-                        plot_list.append([truncated,color_rect,None,True])
-                    confirmed_towers += 1
-                    valid_towers.append(t)
+                if len(truncate_list) != 0:        
+                    truncated = t.truncate(truncate_list) #Was valid towers
+                    if truncated != None:   
+                        print 'Going out: ', truncated
+                        if plot:
+                            plot_list.pop()
+                            color_rect = '#%02X%02X%02X' % (color(),color(),color())
+                            plot_list.append([truncated,color_rect,None,True])
+                        confirmed_towers += 1
+                        valid_towers.append(truncated)
+                    else:
+                        if plot:
+                            plot_list.pop()
+                        print "No valid truncate available"
+                        
                 else:
                     if plot:
                         plot_list.pop()
-                    print "Truncated is None!"
-                if plot:    
-                    plt.close()
+                        color_rect = '#%02X%02X%02X' % (color(),color(),color())
+                        plot_list.append([t,color_rect,None,True])
+                        confirmed_towers += 1
+                        valid_towers.append(t)
+                if plot: 
+                    if confirmed_towers == n:
+                        plot_towers(plot_list,width,height)    
+                        
                     
         attempt += 1
 
     return valid_towers, plot_list
-            #print 'did you see me?'            
-            
-#        
-#        #Now that we know it is within the bounds of the desired coverage area
-#        #we can proceed.
-#        if within_bounds:                         
-#            
-#            if len(list_of_towers) == 0:
-#                list_of_towers.append
-#            
-#            confirmed_towers += 1
-#        
-valid_towers, plot_list = coverage(10,100,100)      
+
+#valid_towers, plot_list = coverage(10,100,100)      
 
         
         
