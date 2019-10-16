@@ -1,5 +1,5 @@
 # ECE143-Individual-Project
-This repository contains the code for the Individual Project by Humberto Hernandez (A11452300) for the course ECE 143 at the University of California, San Diego.
+This repository contains the code for the Individual Project by Humberto Hernandez for the course ECE 143 at the University of California, San Diego.
 
 Please keep everything in the same directory.
 
